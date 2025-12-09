@@ -66,35 +66,33 @@ def get_edinet_code_list():
 
 def get_edinet_code(ticker, code_list_df):
     """
-    Finds EdinetCode for a given ticker (e.g. '7203').
-    Note: Ticker in CSV is usually '72030' (5 digits).
+    Finds EdinetCode and Company Name for a given ticker.
+    Returns (edinet_code, company_name)
     """
     if code_list_df is None:
         raise ValueError("Code list is empty or failed to load.")
     
-    # Try 4 digit match
-    # '証券コード' column usually contains something like '72030'
-    # Let's search for exact partial match or formatted
-    
-    # Ensure ticker is string
     ticker = str(ticker)
     
-    # Normalize column names if possible or guess
     cols = code_list_df.columns
     sec_code_col = [c for c in cols if "証券コード" in c]
     edinet_code_col = [c for c in cols if "ＥＤＩＮＥＴコード" in c or "EdinetCode" in c]
+    company_name_col = [c for c in cols if "提出者名" in c or "SubmitterName" in c]
     
     if not sec_code_col or not edinet_code_col:
-        return None
+        return None, None
         
     sec_col = sec_code_col[0]
     edinet_col = edinet_code_col[0]
+    name_col = company_name_col[0] if company_name_col else None
     
     target = code_list_df[code_list_df[sec_col].astype(str).str.startswith(ticker, na=False)]
     if not target.empty:
-        return target.iloc[0][edinet_col]
+        ecode = target.iloc[0][edinet_col]
+        cname = target.iloc[0][name_col] if name_col else "Unknown"
+        return ecode, cname
         
-    return None
+    return None, None
 
 def search_latest_yuho(edinet_code):
     """
@@ -132,7 +130,7 @@ def search_latest_yuho(edinet_code):
                     if item.get("edinetCode") == edinet_code:
                         dtype = item.get("docTypeCode")
                         if dtype in target_docs:
-                            # Preferentially we might want the newest, which the loop order guarantees (Reverse chronological)
+                            # Preferentially we might want the newest
                             return item.get("docID")
         except:
             continue
@@ -154,7 +152,7 @@ def fetch_financial_data(ticker_code):
         
     # 2. Get Edinet Code
     try:
-        edinet_code = get_edinet_code(ticker_code, df_code)
+        edinet_code, company_name = get_edinet_code(ticker_code, df_code)
     except Exception as e:
         return {"error": f"Error finding ticker {ticker_code}", "details": str(e)}
 
@@ -188,12 +186,11 @@ def fetch_financial_data(ticker_code):
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(extract_dir)
         
-    # Find .xbrl file in 'XBRL/PublicDoc' usually
+    # Find .xbrl file
     xbrl_file = None
     for root, dirs, files in os.walk(extract_dir):
         for file in files:
-            if file.endswith(".xbrl") and "Cc" not in file: # Avoid calculations?
-                # Usually look for PublicDoc
+            if file.endswith(".xbrl") and "Cc" not in file:
                 if "PublicDoc" in root:
                     xbrl_file = os.path.join(root, file)
                     break
@@ -210,12 +207,8 @@ def fetch_financial_data(ticker_code):
             soup = BeautifulSoup(f, "lxml-xml") 
             
         def get_val_by_tag(local_names, soup):
-            # local_names is a list of tag names without prefix e.g. ["CurrentAssets", "AssetsCurrent"]
-            # We search for tags ending with these names
-            
             candidates = []
             for name in local_names:
-                # Regex matches anything ending with :Name or just Name
                 pattern = re.compile(f".*:{name}$|^{name}$")
                 found = soup.find_all(pattern)
                 candidates.extend(found)
@@ -223,12 +216,6 @@ def fetch_financial_data(ticker_code):
             if not candidates:
                 return 0
                 
-            # Filter candidates
-            # Prioritize Context
-            # 1. CurrentYearInstant / CurrentQuarterInstant (for BS)
-            # 2. CurrentYearDuration (usually PL, but checking)
-            # 3. Any context not "Prior"
-            
             best_val = 0
             priority_score = -1
             
@@ -244,9 +231,9 @@ def fetch_financial_data(ticker_code):
                 
                 score = 0
                 if "Prior" in context_ref:
-                    score = 0 # Lowest priority
+                    score = 0
                 elif "CurrentYearInstant" in context_ref or "CurrentQuarterInstant" in context_ref:
-                    score = 3 # Highest for BS
+                    score = 3
                 elif "CurrentYear" in context_ref or "CurrentQuarter" in context_ref:
                     score = 2
                 else:
@@ -255,27 +242,16 @@ def fetch_financial_data(ticker_code):
                 if score > priority_score:
                     priority_score = score
                     best_val = int(val)
-                
-                # If we found a perfect match, we could stop, but let's check all to be safe?
-                # Actually, duplicate tags for same context are rare.
                     
             return best_val
 
-        # Tags (Local names only)
-        # We will look for jppfs_cor:CurrentAssets OR ifrs-full:AssetsCurrent
-        # So we just pass the local part
-        
         data = {}
-        
+        data["CompanyName"] = company_name
         data["CurrentAssets"] = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)
         data["NonCurrentAssets"] = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent"], soup)
         data["CurrentLiabilities"] = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent"], soup)
         data["NonCurrentLiabilities"] = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent"], soup)
         data["NetAssets"] = get_val_by_tag(["NetAssets", "Equity"], soup)
-        
-        # Fallback for NetAssets: If 0, try (Assets - Liabilities) ?
-        # Or try "TotalAssets" - "TotalLiabilities"
-        # Let's keep it simple for now.
         
         return data
         
