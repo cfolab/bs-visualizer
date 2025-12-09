@@ -4,6 +4,13 @@ import datetime
 import os
 import io
 import zipfile
+import collections
+
+# Monkey patch for edinet-xbrl compatibility with Python 3.10+
+if not hasattr(collections, 'Iterable'):
+    import collections.abc
+    collections.Iterable = collections.abc.Iterable
+
 from edinet_xbrl.edinet_xbrl_parser import EdinetXbrlParser
 
 # Constants
