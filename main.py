@@ -70,11 +70,15 @@ if analyze_btn:
                     
                     fig = go.Figure()
                     
+                    # Common marker settings with rounded corners
+                    def rounded_marker(color):
+                        return dict(color=color, cornerradius=15) # 15px radius
+
                     # Assets Column (Left)
                     fig.add_trace(go.Bar(
                         name='流動資産',
                         x=['資産の部'], y=[ca],
-                        marker_color='#FFF8DC', # Light Yellow/Beige
+                        marker=rounded_marker('#FFF8DC'), # Light Yellow/Beige
                         text=fmt(ca), textposition='auto',
                         hovertemplate='流動資産: %{y:,.0f}<extra></extra>'
                     ))
@@ -82,20 +86,19 @@ if analyze_btn:
                     fig.add_trace(go.Bar(
                         name='固定資産',
                         x=['資産の部'], y=[nca],
-                        marker_color='#E0FFFF', # Light Cyan
+                        marker=rounded_marker('#E0FFFF'), # Light Cyan
                         text=fmt(nca), textposition='auto',
                         hovertemplate='固定資産: %{y:,.0f}<extra></extra>'
                     ))
                     
                     # Liabilities+Equity Column (Right)
                     # User requested: Net Assets at bottom, Liabilities at top.
-                    # Stacked Bar Order: First added is at bottom.
                     
                     # 1. Net Assets (Bottom)
                     fig.add_trace(go.Bar(
                         name='純資産',
                         x=['負債・純資産の部'], y=[na],
-                        marker_color='#90EE90', # Light Green
+                        marker=rounded_marker('#90EE90'), # Light Green
                         text=fmt(na), textposition='auto',
                         hovertemplate='純資産: %{y:,.0f}<extra></extra>'
                     ))
@@ -104,7 +107,7 @@ if analyze_btn:
                     fig.add_trace(go.Bar(
                         name='固定負債',
                         x=['負債・純資産の部'], y=[ncl],
-                        marker_color='#FFA07A', # Light Salmon
+                        marker=rounded_marker('#FFA07A'), # Light Salmon
                         text=fmt(ncl), textposition='auto',
                         hovertemplate='固定負債: %{y:,.0f}<extra></extra>'
                     ))
@@ -113,7 +116,7 @@ if analyze_btn:
                     fig.add_trace(go.Bar(
                         name='流動負債',
                         x=['負債・純資産の部'], y=[cl],
-                        marker_color='#FFDAB9', # Peach Puff
+                        marker=rounded_marker('#FFDAB9'), # Peach Puff
                         text=fmt(cl), textposition='auto',
                         hovertemplate='流動負債: %{y:,.0f}<extra></extra>'
                     ))
@@ -125,9 +128,9 @@ if analyze_btn:
                         yaxis_title="金額 (円)",
                         showlegend=True,
                         height=600,
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(size=14)
+                        paper_bgcolor='rgba(255,255,255,0)', # Transparent
+                        plot_bgcolor='rgba(255,255,255,0)',
+                        font=dict(size=14, color="black") # Plain black text
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
