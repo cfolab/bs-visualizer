@@ -11,6 +11,10 @@ if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
 
+import xml.etree.ElementTree as ET
+if not hasattr(ET.Element, 'getchildren'):
+    ET.Element.getchildren = lambda self: list(self)
+
 from edinet_xbrl.edinet_xbrl_parser import EdinetXbrlParser
 
 # Constants
