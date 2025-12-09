@@ -205,35 +205,32 @@ def fetch_financial_data(ticker_code):
 
     # Parse using BeautifulSoup
     try:
+        import re
         with open(xbrl_file, "r", encoding="utf-8") as f:
-            soup = BeautifulSoup(f, "lxml-xml") # Use lxml XML parser
+            soup = BeautifulSoup(f, "lxml-xml") 
             
-        def get_val_by_tag(tags, soup):
-            # Prefer 'CurrentYearInstant' context if possible
-            # Context handling is complex, so we will try a heuristic:
-            # 1. Find all tags
-            # 2. Prefer context that ends with 'CurrentYearInstant' (common in EDINET)
-            # 3. Fallback to just finding the first one
+        def get_val_by_tag(local_names, soup):
+            # local_names is a list of tag names without prefix e.g. ["CurrentAssets", "AssetsCurrent"]
+            # We search for tags ending with these names
             
             candidates = []
-            for tag in tags:
-                # Namespace handling in BS4 with lxml can be tricky.
-                # Tag might be 'jppfs_cor:CurrentAssets' or just 'CurrentAssets' depending on parser
-                # Let's search by local name or regex?
-                # Using find_all with name=...
-                
-                # Split tag to get local name
-                local_name = tag.split(":")[-1]
-                found = soup.find_all(local_name)
-                
-                for el in found:
-                    candidates.append(el)
+            for name in local_names:
+                # Regex matches anything ending with :Name or just Name
+                pattern = re.compile(f".*:{name}$|^{name}$")
+                found = soup.find_all(pattern)
+                candidates.extend(found)
             
             if not candidates:
                 return 0
                 
             # Filter candidates
+            # Prioritize Context
+            # 1. CurrentYearInstant / CurrentQuarterInstant (for BS)
+            # 2. CurrentYearDuration (usually PL, but checking)
+            # 3. Any context not "Prior"
+            
             best_val = 0
+            priority_score = -1
             
             for el in candidates:
                 context_ref = el.get("contextRef", "")
@@ -244,57 +241,41 @@ def fetch_financial_data(ticker_code):
                     val = float(val_str)
                 except:
                     continue
-                    
-                # HEURISTIC: Check context
-                # Prioritize 'CurrentYearInstant' or 'CurrentYearDuration' (though BS is Instant)
-                # Avoid 'PriorYear'
+                
+                score = 0
                 if "Prior" in context_ref:
-                    continue
+                    score = 0 # Lowest priority
+                elif "CurrentYearInstant" in context_ref or "CurrentQuarterInstant" in context_ref:
+                    score = 3 # Highest for BS
+                elif "CurrentYear" in context_ref or "CurrentQuarter" in context_ref:
+                    score = 2
+                else:
+                    score = 1
                     
-                if "CurrentYear" in context_ref or "CurrentQuarter" in context_ref:
-                     return int(val)
-                     
-                # Fallback: keep non-zero
-                if best_val == 0:
+                if score > priority_score:
+                    priority_score = score
                     best_val = int(val)
+                
+                # If we found a perfect match, we could stop, but let's check all to be safe?
+                # Actually, duplicate tags for same context are rare.
                     
             return best_val
 
-        # Tags
-        # JP GAAP
-        jp_tags = {
-            "CurrentAssets": ["jppfs_cor:CurrentAssets"],
-            "NonCurrentAssets": ["jppfs_cor:NonCurrentAssets"],
-            "CurrentLiabilities": ["jppfs_cor:CurrentLiabilities"],
-            "NonCurrentLiabilities": ["jppfs_cor:NonCurrentLiabilities"],
-            "NetAssets": ["jppfs_cor:NetAssets"],
-        }
-        
-        # IFRS Tags
-        ifrs_tags = {
-            "CurrentAssets": ["ifrs-full:AssetsCurrent"],
-            "NonCurrentAssets": ["ifrs-full:AssetsNonCurrent"],
-            "CurrentLiabilities": ["ifrs-full:LiabilitiesCurrent"],
-            "NonCurrentLiabilities": ["ifrs-full:LiabilitiesNonCurrent"],
-            "NetAssets": ["ifrs-full:Equity"],
-        }
-        
-        # Check taxonomy (lazy check)
-        # Try JP first, if 0 try IFRS
+        # Tags (Local names only)
+        # We will look for jppfs_cor:CurrentAssets OR ifrs-full:AssetsCurrent
+        # So we just pass the local part
         
         data = {}
         
-        def get_combined(key):
-            v = get_val_by_tag(jp_tags[key], soup)
-            if v == 0:
-                v = get_val_by_tag(ifrs_tags[key], soup)
-            return v
-            
-        data["CurrentAssets"] = get_combined("CurrentAssets")
-        data["NonCurrentAssets"] = get_combined("NonCurrentAssets")
-        data["CurrentLiabilities"] = get_combined("CurrentLiabilities")
-        data["NonCurrentLiabilities"] = get_combined("NonCurrentLiabilities")
-        data["NetAssets"] = get_combined("NetAssets")
+        data["CurrentAssets"] = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)
+        data["NonCurrentAssets"] = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent"], soup)
+        data["CurrentLiabilities"] = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent"], soup)
+        data["NonCurrentLiabilities"] = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent"], soup)
+        data["NetAssets"] = get_val_by_tag(["NetAssets", "Equity"], soup)
+        
+        # Fallback for NetAssets: If 0, try (Assets - Liabilities) ?
+        # Or try "TotalAssets" - "TotalLiabilities"
+        # Let's keep it simple for now.
         
         return data
         
