@@ -8,7 +8,7 @@ from edinet_xbrl.edinet_xbrl_parser import EdinetXbrlParser
 
 # Constants
 EDINET_API_KEY = "c4ce27d66c84409d868224b250accfd5"
-EDINET_CODE_LIST_URL = "https://disclosure.edinet-fsa.go.jp/E01EW/BL/Config/EdinetcodeDlInfo.csv"
+EDINET_CODE_LIST_URL = "https://disclosure2dl.edinet-fsa.go.jp/searchdocument/codelist/Edinetcode.zip"
 API_ENDPOINT_DOCS = "https://disclosure.edinet-fsa.go.jp/api/v2/documents.json"
 API_ENDPOINT_DOC = "https://disclosure.edinet-fsa.go.jp/api/v2/documents"
 
@@ -32,17 +32,29 @@ def get_edinet_code_list():
         res = requests.get(EDINET_CODE_LIST_URL, headers=headers, timeout=30)
         
         if res.status_code == 200:
-            # Check if content is actually CSV (not HTML)
-            content_type = res.headers.get("Content-Type", "")
-            if "html" in content_type.lower():
-                print("Error: EDINET returned HTML instead of CSV via direct link.")
-                return None
-                
-            # EDINET CSV is usually CP932
+            # Check content type or just try unzip
             content = res.content
-            with open(cache_path, "wb") as f:
-                f.write(content)
-            df = pd.read_csv(io.BytesIO(content), encoding="cp932", skiprows=1)
+            
+            # Extract CSV from ZIP in memory
+            with zipfile.ZipFile(io.BytesIO(content)) as z:
+                # Find the CSV file
+                csv_filename = None
+                for name in z.namelist():
+                    if name.endswith(".csv"):
+                        csv_filename = name
+                        break
+                
+                if not csv_filename:
+                    print("Error: No CSV found in Code List ZIP")
+                    return None
+                    
+                with z.open(csv_filename) as f:
+                    # Save to cache
+                    with open(cache_path, "wb") as cache:
+                        cache.write(f.read())
+            
+            # Read from cache
+            df = pd.read_csv(cache_path, encoding="cp932", skiprows=1)
             return df
         else:
             print(f"Error downloading code list: Status {res.status_code}")
