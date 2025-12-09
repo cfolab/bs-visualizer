@@ -3,9 +3,28 @@
 
 html,
 body,
-[class*="css"] {
+.stApp {
     font-family: 'Noto Sans JP', sans-serif;
-    color: #333333;
+    color: #333333 !important;
+    /* Force dark text globally */
+}
+
+/* Force dark text on specific elements to override Streamlit defaults */
+p,
+div,
+span,
+label,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.stMarkdown,
+.stMetricValue,
+.stMetricLabel,
+.stKPI {
+    color: #333333 !important;
 }
 
 /* Background */
@@ -27,25 +46,12 @@ body,
     }
 }
 
-@keyframes fadeLast {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
 /* Apply animation to main container */
 .main .block-container {
     animation: fadeInUp 0.8s ease-out;
 }
 
-/* Cards (Material Surface) logic via targeted styling */
-/* We can't easily add classes to Streamlit generic containers, but we can style specific block types if wrapped,
-   OR we rely on the helper divs we inject in main.py */
-
+/* Material Card Styling */
 .material-card {
     background-color: white;
     padding: 24px;
@@ -62,17 +68,29 @@ body,
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
-.stMetric {
+/* Metrics Styling */
+[data-testid="stMetric"] {
     background-color: white;
     padding: 16px;
     border-radius: 12px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
     text-align: center;
     transition: all 0.2s;
+    border: 1px solid #eee;
 }
 
-.stMetric:hover {
+[data-testid="stMetric"]:hover {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+[data-testid="stMetricLabel"] {
+    color: #666 !important;
+    font-size: 0.9em !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #333 !important;
+    font-weight: 700 !important;
 }
 
 /* Headings */
@@ -93,31 +111,38 @@ h3 {
 [data-testid="stSidebar"] {
     background-color: #ffffff;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
-    /* Sidebar shadow */
-    border: none;
+    border-right: none;
 }
 
 /* Buttons (Material Ripple-like feel) */
 .stButton>button {
-    background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
-    color: white;
+    background: linear-gradient(135deg, #008080 0%, #004d4d 100%);
+    /* Teal Gradient */
+    color: white !important;
+    /* Text inside button must be white */
     border: none;
     border-radius: 50px;
     /* Pill shape */
     padding: 0.6rem 2rem;
     font-weight: 500;
     letter-spacing: 1px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 128, 128, 0.3);
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .stButton>button:hover {
     transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 128, 128, 0.4);
+    color: white !important;
 }
 
 .stButton>button:active {
     transform: translateY(1px);
+}
+
+.stButton>button p {
+    color: white !important;
+    /* Ensure button text p tag is white */
 }
 
 /* Alerts / Info Boxes */
@@ -125,6 +150,9 @@ h3 {
     border-radius: 12px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     border: none !important;
+    background-color: #e0f2f1;
+    /* Light teal bg for hints */
+    color: #004d40 !important;
 }
 
 /* Input Fields */
@@ -133,9 +161,11 @@ h3 {
     border: 1px solid #e0e0e0;
     padding: 10px 12px;
     transition: all 0.3s;
+    background-color: white;
+    color: #333 !important;
 }
 
 .stTextInput>div>div>input:focus {
-    border-color: #333;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    border-color: #008080;
+    box-shadow: 0 0 0 2px rgba(0, 128, 128, 0.2);
 }
