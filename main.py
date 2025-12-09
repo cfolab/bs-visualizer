@@ -15,7 +15,7 @@ with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Helper Function for Analysis Rendering
-def render_company_analysis(ticker, data, key_suffix=""):
+def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
     if "error" in data:
         st.error(f"エラー ({ticker}): {data['error']}\n{data.get('details', '')}")
         return
@@ -38,7 +38,6 @@ def render_company_analysis(ticker, data, key_suffix=""):
     ncl = data.get("NonCurrentLiabilities", 0)
     na = data.get("NetAssets", 0)
     total_assets = ca + nca
-    # total_liab_equity = cl + ncl + na # Unused but good for debug
     
     def fmt(val):
         return f"{val/100000000:,.1f}億円" 
@@ -47,64 +46,45 @@ def render_company_analysis(ticker, data, key_suffix=""):
         st.warning(f"{ticker}: データが見つかりませんでした。")
         return
 
-    # Layout (4:1 ratio to make metrics narrow)
-    # Note: When in side-by-side mode, this 4:1 splits the *half* screen.
-    col1, col2 = st.columns([4, 1]) 
+    # Chart Construction
+    fig = go.Figure()
+    def rounded_marker(color):
+        return dict(color=color, cornerradius=15) 
+
+    # Assets Column (Left) - Professional Blue Theme
+    fig.add_trace(go.Bar(name='固定資産', x=['資産'], y=[nca], marker=rounded_marker('#0288D1'), text=fmt(nca), textposition='auto', hovertemplate='固定資産: %{y:,.0f}<extra></extra>'))
+    fig.add_trace(go.Bar(name='流動資産', x=['資産'], y=[ca], marker=rounded_marker('#4FC3F7'), text=fmt(ca), textposition='auto', hovertemplate='流動資産: %{y:,.0f}<extra></extra>'))
     
-    with col1:
-        # Chart Section
-        st.markdown("#### 資産・負債の構成")
-        
-        fig = go.Figure()
-        def rounded_marker(color):
-            return dict(color=color, cornerradius=15) 
+    # Liabilities (Right)
+    fig.add_trace(go.Bar(name='純資産', x=['負債・純資産'], y=[na], marker=rounded_marker('#01579B'), text=fmt(na), textposition='auto', hovertemplate='純資産: %{y:,.0f}<extra></extra>'))
+    fig.add_trace(go.Bar(name='固定負債', x=['負債・純資産'], y=[ncl], marker=rounded_marker('#78909C'), text=fmt(ncl), textposition='auto', hovertemplate='固定負債: %{y:,.0f}<extra></extra>'))
+    fig.add_trace(go.Bar(name='流動負債', x=['負債・純資産'], y=[cl], marker=rounded_marker('#B0BEC5'), text=fmt(cl), textposition='auto', hovertemplate='流動負債: %{y:,.0f}<extra></extra>'))
+    
+    fig.update_layout(
+        barmode='stack',
+        showlegend=True,
+        height=400 if not show_metrics else 500, # Slightly shorter if comparison mode
+        margin=dict(l=20, r=20, t=30, b=20),
+        paper_bgcolor='white', 
+        plot_bgcolor='white',
+        font=dict(size=14, family="Noto Sans JP", color="#333333"),
+        xaxis=dict(tickfont=dict(color="#333333", size=14), linecolor="#e0e0e0"),
+        yaxis=dict(tickfont=dict(color="#333333"), title=dict(font=dict(color="#333333")), showgrid=True, gridcolor="#f0f0f0"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#333333"))
+    )
 
-        # Assets Column (Left) - Professional Blue Theme
-        # Stack Order: Bottom -> Top
-        # Non-current Assets: Medium Blue (Base)
-        fig.add_trace(go.Bar(name='固定資産', x=['資産'], y=[nca], marker=rounded_marker('#0288D1'), text=fmt(nca), textposition='auto', hovertemplate='固定資産: %{y:,.0f}<extra></extra>'))
-        # Current Assets: Light Blue (Top)
-        fig.add_trace(go.Bar(name='流動資産', x=['資産'], y=[ca], marker=rounded_marker('#4FC3F7'), text=fmt(ca), textposition='auto', hovertemplate='流動資産: %{y:,.0f}<extra></extra>'))
+    if show_metrics:
+        # Single Mode: 4:1 Layout with Metrics
+        col1, col2 = st.columns([4, 1])
+        with col1:
+             st.markdown("#### 資産・負債の構成")
+             st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}")
         
-        # Liabilities (Right) - Order: NetAssets(Bottom) -> Fixed -> Current
-        fig.add_trace(go.Bar(name='純資産', x=['負債・純資産'], y=[na], marker=rounded_marker('#01579B'), text=fmt(na), textposition='auto', hovertemplate='純資産: %{y:,.0f}<extra></extra>'))
-        fig.add_trace(go.Bar(name='固定負債', x=['負債・純資産'], y=[ncl], marker=rounded_marker('#78909C'), text=fmt(ncl), textposition='auto', hovertemplate='固定負債: %{y:,.0f}<extra></extra>'))
-        fig.add_trace(go.Bar(name='流動負債', x=['負債・純資産'], y=[cl], marker=rounded_marker('#B0BEC5'), text=fmt(cl), textposition='auto', hovertemplate='流動負債: %{y:,.0f}<extra></extra>'))
-        
-        fig.update_layout(
-            barmode='stack',
-            showlegend=True,
-            height=500,
-            margin=dict(l=20, r=20, t=30, b=20),
-            paper_bgcolor='white', 
-            plot_bgcolor='white',
-            font=dict(size=14, family="Noto Sans JP", color="#333333"),
-            # Explicitly style axes to ensure visibility
-            xaxis=dict(
-                tickfont=dict(color="#333333", size=14, family="Noto Sans JP"),
-                linecolor="#e0e0e0"
-            ),
-            yaxis=dict(
-                tickfont=dict(color="#333333"),
-                title=dict(font=dict(color="#333333")),
-                showgrid=True,
-                gridcolor="#f0f0f0"
-            ),
-            legend=dict(
-                orientation="h", 
-                yanchor="bottom", y=1.02, 
-                xanchor="right", x=1,
-                font=dict(color="#333333")
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}")
-
-    with col2:
-        # Metrics Card - Pure HTML for Left Alignment and Tight Control
-        equity_ratio = (na / total_assets) * 100 if total_assets > 0 else 0
-        current_ratio = (ca / cl) * 100 if cl > 0 else 0
-        
-        st.markdown(f"""<div class="material-card" style="padding: 20px; text-align: left;">
+        with col2:
+            equity_ratio = (na / total_assets) * 100 if total_assets > 0 else 0
+            current_ratio = (ca / cl) * 100 if cl > 0 else 0
+            
+            st.markdown(f"""<div class="material-card" style="padding: 20px; text-align: left;">
 <h4 style="margin: 0 0 15px 0; color: #333;">主要指標</h4>
 <div style="margin-bottom: 12px;">
 <div style="color: #666; font-size: 0.85em;">自己資本比率</div>
@@ -124,64 +104,144 @@ def render_company_analysis(ticker, data, key_suffix=""):
 <div style="color: #333; font-size: 1.1em; font-weight: bold;">{fmt(na)}</div>
 </div>
 </div>""", unsafe_allow_html=True)
-
-
-    # Analysis Card - Pure HTML
-    analysis_text = ""
-    if equity_ratio > 50:
-        analysis_text += "<p><strong>✅ 高い安全性</strong><br>自己資本比率が50%を超えており、財務基盤は非常に強固です。</p>"
-    elif equity_ratio > 20:
-        analysis_text += "<p><strong>ℹ️ 標準的な水準</strong><br>自己資本比率は平均的です。成長投資とのバランスが取れています。</p>"
-    else:
-        analysis_text += "<p><strong>⚠️ 改善の余地あり</strong><br>自己資本比率が低めです。リスク管理に注意が必要です。</p>"
-    
-    st.markdown(f"""<div class="material-card" style="padding: 20px; animation-delay: 0.2s;">
+            
+        # Analysis Card
+        analysis_text = ""
+        if equity_ratio > 50:
+            analysis_text += "<p><strong>✅ 高い安全性</strong><br>自己資本比率が50%を超えており、財務基盤は非常に強固です。</p>"
+        elif equity_ratio > 20:
+            analysis_text += "<p><strong>ℹ️ 標準的な水準</strong><br>自己資本比率は平均的です。成長投資とのバランスが取れています。</p>"
+        else:
+            analysis_text += "<p><strong>⚠️ 改善の余地あり</strong><br>自己資本比率が低めです。リスク管理に注意が必要です。</p>"
+        
+        st.markdown(f"""<div class="material-card" style="padding: 20px; animation-delay: 0.2s;">
 <h4 style="margin: 0 0 10px 0; color: #333;">💡 AI 簡易分析</h4>
 <div style="font-size: 0.95em; line-height: 1.6;">
 {analysis_text}
 </div>
 </div>""", unsafe_allow_html=True)
 
+    else:
+        # Comparison Mode: Just Chart
+        st.markdown("#### 資産・負債の構成")
+        st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}")
 
 # Application Header
-st.title("📊 貸借対照表（B/S）ビジュアライザー")
-st.markdown("証券コードを入力して、企業の財務健全性を可視化します。")
+# ... exist code ... (skipping to main)
 
-# Sidebar
-st.sidebar.header("設定")
-ticker1 = st.sidebar.text_input("証券コード (メイン)", value="7203")
-
-# Comparison Toggle
-compare_mode = st.sidebar.checkbox("他社と比較する", value=False)
-ticker2 = ""
-if compare_mode:
-    ticker2 = st.sidebar.text_input("証券コード (比較対象)", value="6758") # Default Sony
-
-analyze_btn = st.sidebar.button("分析開始", type="primary")
-
-# Main Area
 if analyze_btn:
-    with st.spinner("財務データを取得中..."):
+    if not ticker1:
+         st.warning("証券コードを入力してください。")
+    else:
+        # Progress Bar Container
+        progress_bar = st.progress(0, text="準備中...")
+        
+        def update_ui_progress(percent, text):
+            progress_bar.progress(percent, text=text)
+
         # Fetch Data 1
-        data1 = fetch_financial_data(ticker1)
+        data1 = fetch_financial_data(ticker1, progress_callback=update_ui_progress)
         data2 = None
         
         if compare_mode and ticker2:
-            data2 = fetch_financial_data(ticker2)
+            update_ui_progress(0, f"比較対象({ticker2})を検索中...")
+            data2 = fetch_financial_data(ticker2, progress_callback=update_ui_progress)
+        
+        # Clear Progress
+        progress_bar.empty()
         
         # Render
         if compare_mode and data2:
-            # Side by side Comparison
+            # Side by side Comparison - Charts Only
             main_col1, main_col2 = st.columns(2)
             
             with main_col1:
-                render_company_analysis(ticker1, data1, "1")
+                render_company_analysis(ticker1, data1, "1", show_metrics=False)
                 
             with main_col2:
-                render_company_analysis(ticker2, data2, "2")
+                render_company_analysis(ticker2, data2, "2", show_metrics=False)
+            
+            # Unified Comparison Summary
+            st.markdown("---")
+            st.subheader("📊 比較分析サマリー")
+            
+            # Calculate Metrics
+            def get_metrics(d):
+                ta = d.get("TotalAssets", 0)
+                na = d.get("NetAssets", 0)
+                ca = d.get("CurrentAssets", 0)
+                cl = d.get("CurrentLiabilities", 0)
+                er = (na / ta * 100) if ta > 0 else 0
+                cr = (ca / cl * 100) if cl > 0 else 0
+                return ta, na, er, cr
+
+            ta1, na1, er1, cr1 = get_metrics(data1)
+            ta2, na2, er2, cr2 = get_metrics(data2)
+            
+            # Generate Insight
+            c1_name = data1.get('CompanyName')
+            c2_name = data2.get('CompanyName')
+            
+            insight = ""
+            # Size
+            if ta1 > ta2 * 1.5:
+                insight += f"<li>規模: <strong>{c1_name}</strong> は {c2_name} よりも資産規模が大きく上回っています。</li>"
+            elif ta2 > ta1 * 1.5:
+                insight += f"<li>規模: <strong>{c2_name}</strong> は {c1_name} よりも資産規模が大きく上回っています。</li>"
+            else:
+                insight += f"<li>規模: 両社の資産規模は比較的近いです。</li>"
+                
+            # Safety
+            if er1 > er2 + 10:
+                insight += f"<li>安全性: <strong>{c1_name}</strong> (自己資本比率 {er1:.1f}%) の方が財務的な安全性が高いです。</li>"
+            elif er2 > er1 + 10:
+                insight += f"<li>安全性: <strong>{c2_name}</strong> (自己資本比率 {er2:.1f}%) の方が財務的な安全性が高いです。</li>"
+            else:
+                insight += f"<li>安全性: 両社の財務安全性（自己資本比率）は同水準です。</li>"
+
+            # Table HTML
+            def fmt_val(v): return f"{v/100000000:,.0f}億円"
+            
+            st.markdown(f"""
+            <div class="material-card">
+                <table style="width:100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 2px solid #eee;">
+                        <th style="text-align:left; padding:10px; color:#666;">項目</th>
+                        <th style="text-align:right; padding:10px; color:#333;">{c1_name}</th>
+                        <th style="text-align:right; padding:10px; color:#333;">{c2_name}</th>
+                        <th style="text-align:center; padding:10px; color:#999;">判定</th>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding:10px; font-weight:bold; color:#0277BD;">資産合計 (Size)</td>
+                        <td style="text-align:right; padding:10px;">{fmt_val(ta1)}</td>
+                        <td style="text-align:right; padding:10px;">{fmt_val(ta2)}</td>
+                        <td style="text-align:center; padding:10px;">{"👈 Larger" if ta1 > ta2 else "Larger 👉"}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding:10px; font-weight:bold; color:#0277BD;">自己資本比率 (Safety)</td>
+                        <td style="text-align:right; padding:10px;">{er1:.1f}%</td>
+                        <td style="text-align:right; padding:10px;">{er2:.1f}%</td>
+                        <td style="text-align:center; padding:10px;">{"👈 High" if er1 > er2 else "High 👉"}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding:10px; font-weight:bold; color:#0277BD;">流動比率 (Liquidity)</td>
+                        <td style="text-align:right; padding:10px;">{cr1:.1f}%</td>
+                        <td style="text-align:right; padding:10px;">{cr2:.1f}%</td>
+                        <td style="text-align:center; padding:10px;">{"👈 High" if cr1 > cr2 else "High 👉"}</td>
+                    </tr>
+                </table>
+                <div style="margin-top: 20px; background-color: #E1F5FE; padding: 15px; border-radius: 8px;">
+                    <h5 style="margin:0 0 10px 0; color:#01579B;">💡 AI 比較インサイト</h5>
+                    <ul style="margin:0; padding-left:20px; line-height:1.6; color:#0277BD;">
+                        {insight}
+                    </ul>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
         else:
             # Single View
-            render_company_analysis(ticker1, data1, "1")
+            render_company_analysis(ticker1, data1, "1", show_metrics=True)
 
 else:
     # Empty State with Animation

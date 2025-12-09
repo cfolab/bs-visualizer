@@ -137,11 +137,16 @@ def search_latest_yuho(edinet_code):
             
     return None
 
-def fetch_financial_data(ticker_code):
+def fetch_financial_data(ticker_code, progress_callback=None):
     """
     Main function to get BS data.
     """
+    def update_progress(percent, text):
+        if progress_callback:
+            progress_callback(percent, text)
+
     # 1. Get Code List
+    update_progress(0.1, "企業コードリストを読み込み中...")
     try:
         df_code = get_edinet_code_list()
     except Exception as e:
@@ -160,12 +165,14 @@ def fetch_financial_data(ticker_code):
         return {"error": f"Ticker {ticker_code} not found or no EDINET Code"}
         
     # 3. Search Document
+    update_progress(0.3, "最新の有価証券報告書を検索中...")
     doc_id = search_latest_yuho(edinet_code)
     if not doc_id:
         return {"error": "No Annual/Quarterly Report found in the last 365 days"}
         
     # 4. Download and Parse
     # Use API to get XBRL zip
+    update_progress(0.5, "XBRLデータをダウンロード中...")
     url = f"{API_ENDPOINT_DOC}/{doc_id}"
     params = {
         "type": 1, # 1 for ZIP (XBRL)
@@ -178,6 +185,7 @@ def fetch_financial_data(ticker_code):
         
     # Process Zip
     # Save zip temporarily
+    update_progress(0.7, "データを展開・抽出中...")
     zip_path = f"doc_{doc_id}.zip"
     with open(zip_path, "wb") as f:
         f.write(res.content)
@@ -201,6 +209,7 @@ def fetch_financial_data(ticker_code):
          return {"error": "XBRL file not found in archive"}
 
     # Parse using BeautifulSoup
+    update_progress(0.9, "財務データを解析中...")
     try:
         import re
         with open(xbrl_file, "r", encoding="utf-8") as f:
@@ -230,14 +239,22 @@ def fetch_financial_data(ticker_code):
                     continue
                 
                 score = 0
+                # Base scoring on period
                 if "Prior" in context_ref:
                     score = 0
                 elif "CurrentYearInstant" in context_ref or "CurrentQuarterInstant" in context_ref:
-                    score = 3
+                    score = 10
                 elif "CurrentYear" in context_ref or "CurrentQuarter" in context_ref:
-                    score = 2
+                    score = 5
                 else:
                     score = 1
+                
+                # Boost for Consolidated vs Non-Consolidated
+                # We prefer Consolidated (連結) over Non-Consolidated (個別/単体)
+                if "NonConsolidated" in context_ref:
+                    score -= 2
+                elif "Consolidated" in context_ref:
+                    score += 2
                     
                 if score > priority_score:
                     priority_score = score
@@ -247,19 +264,18 @@ def fetch_financial_data(ticker_code):
 
         data = {}
         data["CompanyName"] = company_name
-        data = {}
-        data["CompanyName"] = company_name
         
         # Fetch Components
         ca = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)
         nca = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent"], soup)
         cl = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent"], soup)
         ncl = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent"], soup)
-        na = get_val_by_tag(["NetAssets", "Equity"], soup)
+        na = get_val_by_tag(["NetAssets", "Equity", "TotalNetAssets"], soup)
         
         # Fetch Totals for Validation
-        total_assets = get_val_by_tag(["Assets"], soup)
-        total_liabilities = get_val_by_tag(["Liabilities"], soup)
+        # Added TotalAssets, TotalLiabilities for robustness
+        total_assets = get_val_by_tag(["Assets", "TotalAssets"], soup)
+        total_liabilities = get_val_by_tag(["Liabilities", "TotalLiabilities"], soup)
         
         # Logic to ensure balance and fill gaps
         # 1. Trust Total Assets if available
@@ -305,6 +321,7 @@ def fetch_financial_data(ticker_code):
         data["NetAssets"] = na
         data["TotalAssets"] = total_assets # Informational
         
+        update_progress(1.0, "完了")
         return data
         
     except Exception as e:
