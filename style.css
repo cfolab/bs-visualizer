@@ -1,0 +1,49 @@
+/* Main container styling */
+.main {
+    background-color: #f8f9fa;
+    padding: 2rem;
+}
+
+/* Titles */
+h1 {
+    color: #2c3e50;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+}
+
+h2, h3 {
+    color: #34495e;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background-color: #2c3e50;
+    color: white;
+}
+
+[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+    color: white !important;
+}
+
+/* Button styling */
+.stButton>button {
+    width: 100%;
+    background-color: #1abc9c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.stButton>button:hover {
+    background-color: #16a085;
+    color: white;
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+    font-weight: bold;
+    color: #2c3e50;
+}
