@@ -120,22 +120,18 @@ def get_edinet_code(ticker, code_list_df):
 
 def search_latest_yuho(edinet_code):
     """
-    Searches for the latest Annual Securities Report (Yuho) in the last 90 days.
+    Searches for the latest Annual (120), Quarterly (140), or Semi-Annual (160) Report in the last 365 days.
     Returns docID if found.
     """
-    # 030000 is Yuho (Annual Report)
+    # 120: Annual Security Report
+    # 140: Quarterly Report
+    # 160: Semi-Annual Report
+    target_docs = ["120", "140", "160"]
     
     today = datetime.date.today()
-    # Check last 90 days
-    # To speed up, we could use threads, but let's do sequential for safety first, or jump by weeks? No.
-    # Actually, we can check specific dates? No.
-    # Let's check the last 3 months (90 days). 
-    # 90 requests is a lot.
-    # Maybe limit to 30 days for demo purpose?
-    # Or start with a wide scan? 
-    # Let's try 60 days.
     
-    for i in range(60): 
+    # Check last 365 days
+    for i in range(365): 
         date = today - datetime.timedelta(days=i)
         date_str = date.strftime("%Y-%m-%d")
         
@@ -146,7 +142,7 @@ def search_latest_yuho(edinet_code):
         }
         
         try:
-            res = requests.get(API_ENDPOINT_DOCS, params=params, timeout=5)
+            res = requests.get(API_ENDPOINT_DOCS, params=params, timeout=10)
             if res.status_code == 200:
                 data = res.json()
                 results = data.get("results", [])
@@ -156,11 +152,9 @@ def search_latest_yuho(edinet_code):
                 # Filter for this proper company and doc type
                 for item in results:
                     if item.get("edinetCode") == edinet_code:
-                        # Check docTypeCode
-                        # Yuho is 120? Form code 030000? 
-                        # 'docTypeCode' 120 is 'Annual Securities Report' (Yuho)
-                        # Let's check 'docDescription' too
-                        if item.get("docTypeCode") == "120":
+                        dtype = item.get("docTypeCode")
+                        if dtype in target_docs:
+                            # Preferentially we might want the newest, which the loop order guarantees (Reverse chronological)
                             return item.get("docID")
         except:
             continue
@@ -192,7 +186,7 @@ def fetch_financial_data(ticker_code):
     # 3. Search Document
     doc_id = search_latest_yuho(edinet_code)
     if not doc_id:
-        return {"error": "No recent Annual Securities Report found in the last 60 days"}
+        return {"error": "No Annual/Quarterly Report found in the last 365 days"}
         
     # 4. Download and Parse
     # Use API to get XBRL zip
