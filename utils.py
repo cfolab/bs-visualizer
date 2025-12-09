@@ -26,14 +26,27 @@ def get_edinet_code_list():
             pass # Reload if error
             
     try:
-        res = requests.get(EDINET_CODE_LIST_URL)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        res = requests.get(EDINET_CODE_LIST_URL, headers=headers, timeout=30)
+        
         if res.status_code == 200:
+            # Check if content is actually CSV (not HTML)
+            content_type = res.headers.get("Content-Type", "")
+            if "html" in content_type.lower():
+                print("Error: EDINET returned HTML instead of CSV via direct link.")
+                return None
+                
             # EDINET CSV is usually CP932
             content = res.content
             with open(cache_path, "wb") as f:
                 f.write(content)
             df = pd.read_csv(io.BytesIO(content), encoding="cp932", skiprows=1)
             return df
+        else:
+            print(f"Error downloading code list: Status {res.status_code}")
+            return None
     except Exception as e:
         print(f"Error downloading code list: {e}")
         return None
@@ -45,7 +58,7 @@ def get_edinet_code(ticker, code_list_df):
     Note: Ticker in CSV is usually '72030' (5 digits).
     """
     if code_list_df is None:
-        return None
+        raise ValueError("Code list is empty or failed to load.")
     
     # Try 4 digit match
     # '証券コード' column usually contains something like '72030'
@@ -147,12 +160,20 @@ def fetch_financial_data(ticker_code):
     Main function to get BS data.
     """
     # 1. Get Code List
-    df_code = get_edinet_code_list()
+    try:
+        df_code = get_edinet_code_list()
+    except Exception as e:
+         return {"error": "Failed to load EDINET Code List", "details": str(e)}
+
     if df_code is None:
-        return {"error": "Failed to load EDINET Code List"}
+        return {"error": "Failed to load EDINET Code List (returned None)"}
         
     # 2. Get Edinet Code
-    edinet_code = get_edinet_code(ticker_code, df_code)
+    try:
+        edinet_code = get_edinet_code(ticker_code, df_code)
+    except Exception as e:
+        return {"error": f"Error finding ticker {ticker_code}", "details": str(e)}
+
     if not edinet_code:
         return {"error": f"Ticker {ticker_code} not found or no EDINET Code"}
         

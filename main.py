@@ -31,6 +31,8 @@ if analyze_btn:
         
         if "error" in data:
             st.error(f"Error: {data['error']}")
+            if "details" in data:
+                st.caption(f"Details: {data['details']}")
         else:
             # Data Preparation
             ca = data.get("CurrentAssets", 0)
