@@ -1,63 +1,141 @@
-/* Main container styling */
-.main {
-    background-color: #ffffff;
-    color: #000000;
-    padding: 2rem;
-}
+/* Global Font & Reset */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
 
-/* Titles */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    color: #000000 !important;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-weight: 700;
-}
-
-p,
-div,
-span {
+html,
+body,
+[class*="css"] {
+    font-family: 'Noto Sans JP', sans-serif;
     color: #333333;
 }
 
-/* Sidebar styling */
+/* Background */
+.stApp {
+    background-color: #f5f5f5;
+    /* Light grey for material background */
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeLast {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Apply animation to main container */
+.main .block-container {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* Cards (Material Surface) logic via targeted styling */
+/* We can't easily add classes to Streamlit generic containers, but we can style specific block types if wrapped,
+   OR we rely on the helper divs we inject in main.py */
+
+.material-card {
+    background-color: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+.material-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.stMetric {
+    background-color: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.stMetric:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Headings */
+h1 {
+    font-weight: 700 !important;
+    letter-spacing: -0.05em !important;
+    color: #1a1a1a !important;
+    padding-bottom: 1rem;
+}
+
+h2,
+h3 {
+    font-weight: 500 !important;
+    color: #444 !important;
+}
+
+/* Sidebar */
 [data-testid="stSidebar"] {
-    background-color: #f0f2f6;
-    /* Very light gray for sidebar differentiation */
-    color: #000000;
-    border-right: 1px solid #e0e0e0;
+    background-color: #ffffff;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+    /* Sidebar shadow */
+    border: none;
 }
 
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-    color: #000000 !important;
-}
-
-/* Button styling */
+/* Buttons (Material Ripple-like feel) */
 .stButton>button {
-    width: 100%;
-    background-color: #333333;
-    /* Dark gray button */
+    background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    /* Rounded buttons */
-    padding: 0.5rem 1rem;
-    font-weight: bold;
-    transition: background-color 0.3s;
+    border-radius: 50px;
+    /* Pill shape */
+    padding: 0.6rem 2rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .stButton>button:hover {
-    background-color: #000000;
-    color: white;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
-/* Expander styling */
-.streamlit-expanderHeader {
-    font-weight: bold;
-    color: #000000;
+.stButton>button:active {
+    transform: translateY(1px);
+}
+
+/* Alerts / Info Boxes */
+.stAlert {
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: none !important;
+}
+
+/* Input Fields */
+.stTextInput>div>div>input {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    padding: 10px 12px;
+    transition: all 0.3s;
+}
+
+.stTextInput>div>div>input:focus {
+    border-color: #333;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
