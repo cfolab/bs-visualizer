@@ -88,14 +88,19 @@ if analyze_btn:
                     ))
                     
                     # Liabilities+Equity Column (Right)
+                    # User requested: Net Assets at bottom, Liabilities at top.
+                    # Stacked Bar Order: First added is at bottom.
+                    
+                    # 1. Net Assets (Bottom)
                     fig.add_trace(go.Bar(
-                        name='流動負債',
-                        x=['負債・純資産の部'], y=[cl],
-                        marker_color='#FFDAB9', # Peach Puff
-                        text=fmt(cl), textposition='auto',
-                        hovertemplate='流動負債: %{y:,.0f}<extra></extra>'
+                        name='純資産',
+                        x=['負債・純資産の部'], y=[na],
+                        marker_color='#90EE90', # Light Green
+                        text=fmt(na), textposition='auto',
+                        hovertemplate='純資産: %{y:,.0f}<extra></extra>'
                     ))
                     
+                    # 2. Fixed Liabilities (Middle)
                     fig.add_trace(go.Bar(
                         name='固定負債',
                         x=['負債・純資産の部'], y=[ncl],
@@ -104,12 +109,13 @@ if analyze_btn:
                         hovertemplate='固定負債: %{y:,.0f}<extra></extra>'
                     ))
                     
+                    # 3. Current Liabilities (Top)
                     fig.add_trace(go.Bar(
-                        name='純資産',
-                        x=['負債・純資産の部'], y=[na],
-                        marker_color='#90EE90', # Light Green
-                        text=fmt(na), textposition='auto',
-                        hovertemplate='純資産: %{y:,.0f}<extra></extra>'
+                        name='流動負債',
+                        x=['負債・純資産の部'], y=[cl],
+                        marker_color='#FFDAB9', # Peach Puff
+                        text=fmt(cl), textposition='auto',
+                        hovertemplate='流動負債: %{y:,.0f}<extra></extra>'
                     ))
                     
                     # Layout Updates

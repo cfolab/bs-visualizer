@@ -247,11 +247,63 @@ def fetch_financial_data(ticker_code):
 
         data = {}
         data["CompanyName"] = company_name
-        data["CurrentAssets"] = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)
-        data["NonCurrentAssets"] = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent"], soup)
-        data["CurrentLiabilities"] = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent"], soup)
-        data["NonCurrentLiabilities"] = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent"], soup)
-        data["NetAssets"] = get_val_by_tag(["NetAssets", "Equity"], soup)
+        data = {}
+        data["CompanyName"] = company_name
+        
+        # Fetch Components
+        ca = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)
+        nca = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent"], soup)
+        cl = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent"], soup)
+        ncl = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent"], soup)
+        na = get_val_by_tag(["NetAssets", "Equity"], soup)
+        
+        # Fetch Totals for Validation
+        total_assets = get_val_by_tag(["Assets"], soup)
+        total_liabilities = get_val_by_tag(["Liabilities"], soup)
+        
+        # Logic to ensure balance and fill gaps
+        # 1. Trust Total Assets if available
+        if total_assets == 0:
+            total_assets = ca + nca
+        
+        # 2. Check Assets breakdown
+        # If Current + NonCurrent < Total, the diff is "Deferred" or "Other"
+        # We will add it to NonCurrent for simplicity or return as separate?
+        # Let's adjust NonCurrent to absorb small diffs or missing parts? 
+        # Actually, creating a robust "Other" category is better but might break UI.
+        # Let's force consistency:
+        if ca + nca < total_assets:
+            # Assume remainder is other/non-current
+            nca = total_assets - ca
+            
+        # 3. Handle Liabilities and Net Assets
+        # Ideally: Total Assets = Total Liabilities + Net Assets
+        # If Total Liabilities is missing, infer it?
+        if total_liabilities == 0 and na > 0:
+             total_liabilities = total_assets - na
+        
+        # If Net Assets is missing, infer it?
+        if na == 0 and total_liabilities > 0:
+            na = total_assets - total_liabilities
+
+        # Check Liabilities breakdown
+        if cl + ncl < total_liabilities:
+             # Add to NonCurrent Liab
+             ncl = total_liabilities - cl
+             
+        # Final Force Balance (BS must balance!)
+        # We trust Assets side.
+        limit_diff = total_assets - (cl + ncl + na)
+        if abs(limit_diff) > 0:
+            # If discrepancy exists, adjust Net Assets (common plug)
+            na += limit_diff
+
+        data["CurrentAssets"] = ca
+        data["NonCurrentAssets"] = nca
+        data["CurrentLiabilities"] = cl
+        data["NonCurrentLiabilities"] = ncl
+        data["NetAssets"] = na
+        data["TotalAssets"] = total_assets # Informational
         
         return data
         
