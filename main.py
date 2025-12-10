@@ -92,7 +92,15 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
              detail_content = None
              if selection and selection["selection"]["points"]:
                  point = selection["selection"]["points"][0]
-                 category = point["customdata"][0] if "customdata" in point else point["legendgroup"]
+                 # Robust CustomData Extraction
+                 raw_cd = point.get("customdata")
+                 if isinstance(raw_cd, list):
+                     category = raw_cd[0]
+                 else:
+                     category = raw_cd
+                 
+                 # Fallback if customdata missing (shouldn't happen with our traces)
+                 if not category: category = point.get("legendgroup")
                  
                  if category == "流動資産":
                      detail_content = {
@@ -191,7 +199,14 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
         
         if selection and selection["selection"]["points"]:
              point = selection["selection"]["points"][0]
-             category = point["customdata"][0] if "customdata" in point else point["legendgroup"]
+             # Robust CustomData Extraction
+             raw_cd = point.get("customdata")
+             if isinstance(raw_cd, list):
+                 category = raw_cd[0]
+             else:
+                 category = raw_cd
+                 
+             if not category: category = point.get("legendgroup")
              
              detail_content = None
              if category == "流動資産":
