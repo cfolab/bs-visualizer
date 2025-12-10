@@ -395,6 +395,11 @@ def fetch_financial_data(ticker_code, progress_callback=None):
 
         # NA
         na = get_val_by_tag(["NetAssets", "Equity", "TotalNetAssets", "EquityAttributableToOwnersOfParent", "EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], soup)
+
+        # Totals
+        total_assets = get_val_by_tag(["Assets", "TotalAssets", "TotalAssetsIFRSSummaryOfBusinessResults"], soup)
+        total_liabilities = get_val_by_tag(["Liabilities", "TotalLiabilities", "TotalLiabilitiesIFRSSummaryOfBusinessResults"], soup)
+        
         # ------------------------------------------
         
         # Logic to ensure balance and fill gaps
