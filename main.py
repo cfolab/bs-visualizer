@@ -272,47 +272,6 @@ if compare_mode:
 
 analyze_btn = st.sidebar.button("分析開始", type="primary")
 
-# DEBUG SECTION
-if st.sidebar.checkbox("デバッグモード"):
-    debug_ticker = st.sidebar.text_input("デバッグ用コード", "8058")
-    if st.sidebar.button("構造解析"):
-        st.write(f"解析中: {debug_ticker}...")
-        from utils import get_edinet_code_list, get_edinet_code, search_latest_yuho, EDINET_API_KEY, API_ENDPOINT_DOC
-        import requests, zipfile, io
-        from bs4 import BeautifulSoup
-        import re
-        
-        df = get_edinet_code_list()
-        ecode, name, _ = get_edinet_code(debug_ticker, df)
-        st.write(f"Name: {name}, Code: {ecode}")
-        
-        if ecode:
-            doc_id = search_latest_yuho(ecode)
-            st.write(f"DocID: {doc_id}")
-            
-            if doc_id:
-                url = f"{API_ENDPOINT_DOC}/{doc_id}"
-                res = requests.get(url, params={"type": 1, "Subscription-Key": EDINET_API_KEY})
-                with zipfile.ZipFile(io.BytesIO(res.content)) as z:
-                    for n in z.namelist():
-                        if n.endswith(".xbrl") and "PublicDoc" in n:
-                            st.write(f"Parsing {n}...")
-                            with z.open(n) as f:
-                                soup = BeautifulSoup(f, "lxml-xml")
-                                
-                                st.subheader("Top 20 Contexts")
-                                contexts = sorted(list(set([t.get("contextRef") for t in soup.find_all(contextRef=True)])))
-                                st.write(contexts[:20])
-                                
-                                st.subheader("Assets Tags")
-                                assets = soup.find_all(re.compile(".*Assets$"))
-                                st.write([t.name for t in assets[:20]])
-
-                                st.subheader("IFRS Tags")
-                                ifrs = soup.find_all(re.compile(".*ifrs.*", re.IGNORECASE))
-                                st.write([t.name for t in ifrs[:20]])
-                                break
-
 # Main Area
 if analyze_btn:
     if not ticker1:

@@ -338,7 +338,7 @@ def fetch_financial_data(ticker_code, progress_callback=None):
         
         # 2. Receivables (Notes & Accounts vs Separated)
         receivables = get_or_sum(
-            ["NotesAndAccountsReceivableTrade", "NotesAndAccountsReceivable", "TradeAndOtherReceivables"], 
+            ["NotesAndAccountsReceivableTrade", "NotesAndAccountsReceivable", "TradeAndOtherReceivables", "TradeReceivables"], 
             [["NotesReceivableTrade", "NotesReceivable"], ["AccountsReceivableTrade", "AccountsReceivable"]],
             soup
         )
@@ -351,10 +351,10 @@ def fetch_financial_data(ticker_code, progress_callback=None):
         )
         
         # 4. PPE (Property Plant and Equipment)
-        ppe = get_val_by_tag(["PropertyPlantAndEquipment", "TangibleFixedAssets"], soup)
+        ppe = get_val_by_tag(["PropertyPlantAndEquipment", "TangibleFixedAssets", "PropertyPlantAndEquipmentAndRightOfUseAssets"], soup)
         
         # 5. Intangible & Investments
-        intangible = get_val_by_tag(["IntangibleAssets", "IntangibleFixedAssets"], soup)
+        intangible = get_val_by_tag(["IntangibleAssets", "IntangibleFixedAssets", "IntangibleAssetsAndGoodwill"], soup)
         investments = get_val_by_tag(["InvestmentsAndOtherAssets", "InvestmentSecurities", "OtherFinancialAssets"], soup)
 
         # 6. Interest Bearing Debt (Summation)
@@ -366,7 +366,9 @@ def fetch_financial_data(ticker_code, progress_callback=None):
             ["CommercialPapersLiabilities", "CommercialPapers"],
             ["CurrentPortionOfLongTermLoansPayable", "CurrentPortionOfLongTermLoans"],
             ["ConvertibleBondsTypeBondsPayable", "ConvertibleBonds"],
-            ["BondsAndBorrowings"] # IFRS Aggregate
+            ["BondsAndBorrowings"], # IFRS Aggregate
+            ["LeaseLiabilities"],   # IFRS
+            ["OtherFinancialLiabilities"] # IFRS Broad
         ]
         interest_bearing_debt = 0
         for tags in debt_tags:
