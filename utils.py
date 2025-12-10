@@ -66,8 +66,8 @@ def get_edinet_code_list():
 
 def get_edinet_code(ticker, code_list_df):
     """
-    Finds EdinetCode and Company Name for a given ticker.
-    Returns (edinet_code, company_name)
+    Finds EdinetCode, Company Name, and Industry for a given ticker.
+    Returns (edinet_code, company_name, industry)
     """
     if code_list_df is None:
         raise ValueError("Code list is empty or failed to load.")
@@ -78,21 +78,41 @@ def get_edinet_code(ticker, code_list_df):
     sec_code_col = [c for c in cols if "証券コード" in c]
     edinet_code_col = [c for c in cols if "ＥＤＩＮＥＴコード" in c or "EdinetCode" in c]
     company_name_col = [c for c in cols if "提出者名" in c or "SubmitterName" in c]
+    industry_col = [c for c in cols if "提出者業種" in c or "Industry" in c]
     
     if not sec_code_col or not edinet_code_col:
-        return None, None
+        return None, None, None
         
     sec_col = sec_code_col[0]
     edinet_col = edinet_code_col[0]
     name_col = company_name_col[0] if company_name_col else None
+    ind_col = industry_col[0] if industry_col else None
     
     target = code_list_df[code_list_df[sec_col].astype(str).str.startswith(ticker, na=False)]
     if not target.empty:
         ecode = target.iloc[0][edinet_col]
         cname = target.iloc[0][name_col] if name_col else "Unknown"
-        return ecode, cname
+        industry = target.iloc[0][ind_col] if ind_col else "Unknown"
+        return ecode, cname, industry
         
-    return None, None
+    return None, None, None
+
+def search_latest_yuho(edinet_code):
+    """
+    Searches for the latest Annual (120), Quarterly (140), or Semi-Annual (160) Report in the last 365 days.
+    Returns docID if found.
+    """
+    # ... existing implementation ...
+    # Note: Since I am replacing the block, I need to keep the original content of search_latest_yuho if I touch it, 
+    # OR simply target get_edinet_code.
+    # But wait, fetch_financial_data ALSO needs update.
+    # I will split this into two replacement chunks or better, just replace get_edinet_code and then fetch_financial_data separately.
+    # Instruction above says 1 and 2. I'll stick to get_edinet_code first if I can, but the tool allows contiguous replacement.
+    # It's safer to do get_edinet_code first.
+
+# I will restart this replacement content to ONLY target get_edinet_code to avoid wiping search_latest_yuho inadvertently.
+# Actually I can't target fetch_financial_data in the same chunk easily if they are far apart.
+# I'll use multi_replace for safety if I need to touch multiple spots, but here I'll do two calls.
 
 def search_latest_yuho(edinet_code):
     """
@@ -157,12 +177,26 @@ def fetch_financial_data(ticker_code, progress_callback=None):
         
     # 2. Get Edinet Code
     try:
-        edinet_code, company_name = get_edinet_code(ticker_code, df_code)
+        edinet_code, company_name, industry = get_edinet_code(ticker_code, df_code)
     except Exception as e:
         return {"error": f"Error finding ticker {ticker_code}", "details": str(e)}
 
     if not edinet_code:
         return {"error": f"Ticker {ticker_code} not found or no EDINET Code"}
+        
+    # 3. Search Document
+    # ... (skipping unchanged lines is risky with replace_file_content unless I include them. 
+    # I will include the context for search_doc to be safe or just target the block I need)
+    
+    # ... skipping to the Data dict creation part ... 
+    # I'll just replace the TOP part of the function first to capture the unpacking.
+    
+    # Wait, I need to pass 'industry' all the way down to data = {} at the end of the function.
+    # The variable 'industry' will be in scope. 
+    # I'll replace the first block (Unpacking)
+    
+    # Then I'll replace the specific block where 'data' is created. 
+    # This requires 2 steps or 1 multi_replace. Use multi_replace for atomic update.
         
     # 3. Search Document
     update_progress(0.3, "最新の有価証券報告書を検索中...")
@@ -264,6 +298,7 @@ def fetch_financial_data(ticker_code, progress_callback=None):
 
         data = {}
         data["CompanyName"] = company_name
+        data["Industry"] = industry
         
         # Fetch Components
         ca = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)

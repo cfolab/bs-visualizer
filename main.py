@@ -22,12 +22,13 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
 
     # Display Company Name
     company_name = data.get("CompanyName", "不明な企業")
+    industry = data.get("Industry", "-")
     
     # Header with animation
     st.markdown(f"""
     <div style="animation: fadeInUp 0.5s ease-out;">
         <h2 style="margin-bottom:0px;">{company_name}</h2>
-        <p style="color:gray; font-size:0.9em;">証券コード: {ticker}</p>
+        <p style="color:gray; font-size:0.9em;">証券コード: {ticker} | 業種: {industry}</p>
     </div>
     """, unsafe_allow_html=True)
 
