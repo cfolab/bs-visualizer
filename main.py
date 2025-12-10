@@ -103,42 +103,47 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
                  if not category: category = point.get("legendgroup")
                  
                  if category == "流動資産":
-                     detail_content = {
-                         "title": "流動資産の詳細",
-                         "items": [
-                             ("現金・預金", data.get("Cash", 0)),
-                             ("受取手形・売掛金", data.get("Receivables", 0)),
-                             ("棚卸資産", data.get("Inventory", 0)),
-                             ("その他", ca - (data.get("Cash",0)+data.get("Receivables",0)+data.get("Inventory",0)))
-                         ]
-                     }
+                     # Check if we have breakdowns
+                     if (data.get("Cash", 0) + data.get("Receivables", 0) + data.get("Inventory", 0)) > 0:
+                         detail_content = {
+                             "title": "流動資産の詳細",
+                             "items": [
+                                 ("現金・預金", data.get("Cash", 0)),
+                                 ("受取手形・売掛金", data.get("Receivables", 0)),
+                                 ("棚卸資産", data.get("Inventory", 0)),
+                                 ("その他", ca - (data.get("Cash",0)+data.get("Receivables",0)+data.get("Inventory",0)))
+                             ]
+                         }
                  elif category == "固定資産":
-                     detail_content = {
-                         "title": "固定資産の詳細",
-                         "items": [
-                             ("有形固定資産", data.get("PPE", 0)),
-                             ("無形固定資産", data.get("Intangible", 0)),
-                             ("投資その他の資産", data.get("Investments", 0)),
-                         ]
-                     }
+                     if (data.get("PPE", 0) + data.get("Intangible", 0) + data.get("Investments", 0)) > 0:
+                         detail_content = {
+                             "title": "固定資産の詳細",
+                             "items": [
+                                 ("有形固定資産", data.get("PPE", 0)),
+                                 ("無形固定資産", data.get("Intangible", 0)),
+                                 ("投資その他の資産", data.get("Investments", 0)),
+                             ]
+                         }
                  elif category in ["固定負債", "流動負債"]:
-                     # Show Debt Info
+                     # Show Debt Info if available
                      interest_debt = data.get("InterestDebt", 0)
-                     detail_content = {
-                         "title": "負債の詳細情報",
-                         "items": [
-                             ("有利子負債合計", interest_debt),
-                             ("その他の負債", (cl + ncl) - interest_debt)
-                         ]
-                     }
+                     if interest_debt > 0:
+                         detail_content = {
+                             "title": "負債の詳細情報",
+                             "items": [
+                                 ("有利子負債合計", interest_debt),
+                                 ("その他の負債", (cl + ncl) - interest_debt)
+                             ]
+                         }
                  elif category == "純資産":
-                     detail_content = {
-                         "title": "純資産の詳細",
-                         "items": [
-                             ("利益剰余金", data.get("RetainedEarnings", 0)),
-                             ("その他", na - data.get("RetainedEarnings", 0))
-                         ]
-                     }
+                     if data.get("RetainedEarnings", 0) > 0:
+                         detail_content = {
+                             "title": "純資産の詳細",
+                             "items": [
+                                 ("利益剰余金", data.get("RetainedEarnings", 0)),
+                                 ("その他", na - data.get("RetainedEarnings", 0))
+                             ]
+                         }
 
              if detail_content:
                  st.markdown(f"""
@@ -210,41 +215,45 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
              
              detail_content = None
              if category == "流動資産":
-                 detail_content = {
-                     "title": "流動資産の詳細",
-                     "items": [
-                         ("現金・預金", data.get("Cash", 0)),
-                         ("受取手形・売掛金", data.get("Receivables", 0)),
-                         ("棚卸資産", data.get("Inventory", 0)),
-                         ("その他", ca - (data.get("Cash",0)+data.get("Receivables",0)+data.get("Inventory",0)))
-                     ]
-                 }
+                 if (data.get("Cash", 0) + data.get("Receivables", 0) + data.get("Inventory", 0)) > 0:
+                     detail_content = {
+                         "title": "流動資産の詳細",
+                         "items": [
+                             ("現金・預金", data.get("Cash", 0)),
+                             ("受取手形・売掛金", data.get("Receivables", 0)),
+                             ("棚卸資産", data.get("Inventory", 0)),
+                             ("その他", ca - (data.get("Cash",0)+data.get("Receivables",0)+data.get("Inventory",0)))
+                         ]
+                     }
              elif category == "固定資産":
-                 detail_content = {
-                     "title": "固定資産の詳細",
-                     "items": [
-                         ("有形固定資産", data.get("PPE", 0)),
-                         ("無形固定資産", data.get("Intangible", 0)),
-                         ("投資その他の資産", data.get("Investments", 0)),
-                     ]
-                 }
+                 if (data.get("PPE", 0) + data.get("Intangible", 0) + data.get("Investments", 0)) > 0:
+                     detail_content = {
+                         "title": "固定資産の詳細",
+                         "items": [
+                             ("有形固定資産", data.get("PPE", 0)),
+                             ("無形固定資産", data.get("Intangible", 0)),
+                             ("投資その他の資産", data.get("Investments", 0)),
+                         ]
+                     }
              elif category in ["固定負債", "流動負債"]:
                  interest_debt = data.get("InterestDebt", 0)
-                 detail_content = {
-                     "title": "負債の詳細情報",
-                     "items": [
-                         ("有利子負債合計", interest_debt),
-                         ("その他の負債", (cl + ncl) - interest_debt)
-                     ]
-                 }
+                 if interest_debt > 0:
+                     detail_content = {
+                         "title": "負債の詳細情報",
+                         "items": [
+                             ("有利子負債合計", interest_debt),
+                             ("その他の負債", (cl + ncl) - interest_debt)
+                         ]
+                     }
              elif category == "純資産":
-                 detail_content = {
-                     "title": "純資産の詳細",
-                     "items": [
-                         ("利益剰余金", data.get("RetainedEarnings", 0)),
-                         ("その他", na - data.get("RetainedEarnings", 0))
-                     ]
-                 }
+                 if data.get("RetainedEarnings", 0) > 0:
+                     detail_content = {
+                         "title": "純資産の詳細",
+                         "items": [
+                             ("利益剰余金", data.get("RetainedEarnings", 0)),
+                             ("その他", na - data.get("RetainedEarnings", 0))
+                         ]
+                     }
 
              if detail_content:
                  st.markdown(f"""
