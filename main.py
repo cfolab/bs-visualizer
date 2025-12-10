@@ -109,13 +109,13 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
         analysis_text = ""
         if equity_ratio > 50:
             analysis_text += "<p><strong>✅ 高い安全性</strong><br>自己資本比率が50%を超えており、財務基盤は非常に強固です。</p>"
-        elif equity_ratio > 20:
+        elif equity_ratio >= 30:
             analysis_text += "<p><strong>ℹ️ 標準的な水準</strong><br>自己資本比率は平均的です。成長投資とのバランスが取れています。</p>"
         else:
-            analysis_text += "<p><strong>⚠️ 改善の余地あり</strong><br>自己資本比率が低めです。リスク管理に注意が必要です。</p>"
+            analysis_text += "<p><strong>⚠️ 改善の余地あり</strong><br>自己資本比率が30%を下回っています。借入金への依存度が高いため、金利上昇リスクなどに注意が必要です。</p>"
         
         st.markdown(f"""<div class="material-card" style="padding: 20px; animation-delay: 0.2s;">
-<h4 style="margin: 0 0 10px 0; color: #333;">💡 AI 簡易分析</h4>
+<h4 style="margin: 0 0 10px 0; color: #333;">コメント</h4>
 <div style="font-size: 0.95em; line-height: 1.6;">
 {analysis_text}
 </div>
@@ -245,7 +245,7 @@ if analyze_btn:
                     </tr>
                 </table>
                 <div style="margin-top: 20px; background-color: #E1F5FE; padding: 15px; border-radius: 8px;">
-                    <h5 style="margin:0 0 10px 0; color:#01579B;">💡 AI 比較インサイト</h5>
+                    <h5 style="margin:0 0 10px 0; color:#01579B;">比較コメント</h5>
                     <ul style="margin:0; padding-left:20px; line-height:1.6; color:#0277BD;">
                         {insight}
                     </ul>
