@@ -280,6 +280,8 @@ def fetch_financial_data(ticker_code, progress_callback=None):
                     score = 10
                 elif "CurrentYear" in context_ref or "CurrentQuarter" in context_ref:
                     score = 5
+                elif "Instant" in context_ref: # Generic Instant (often matches IFRS contexts)
+                    score = 3
                 else:
                     score = 1
                 
