@@ -452,3 +452,17 @@ else:
         <p style="color: #999;">証券コードを入力して、分析を開始してください。</p>
     </div>
     """, unsafe_allow_html=True)
+
+# Disclaimer Footer
+st.markdown("---")
+st.markdown("""
+<div style="font-size: 0.75em; color: #aaa; margin-top: 50px; text-align: center; line-height: 1.5;">
+    <p><strong>【免責事項】</strong></p>
+    <p>
+    本ツールで表示される情報は、EDINET APIから取得したデータを基に機械的に算出・表示されたものであり、<br>
+    その正確性、完全性、信頼性を保証するものではありません。<br>
+    情報は必ず、各企業の公式な有価証券報告書等で直接ご確認ください。<br>
+    本ツールの利用により生じた損害について、開発者は一切の責任を負いません。投資判断等は自己責任で行ってください。
+    </p>
+</div>
+""", unsafe_allow_html=True)
