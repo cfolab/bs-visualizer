@@ -311,6 +311,60 @@ def fetch_financial_data(ticker_code, progress_callback=None):
         # Added TotalAssets, TotalLiabilities for robustness
         total_assets = get_val_by_tag(["Assets", "TotalAssets"], soup)
         total_liabilities = get_val_by_tag(["Liabilities", "TotalLiabilities"], soup)
+
+        # --- Detailed Extraction for Drill-down ---
+        # Helper to get first non-zero or sum of components
+        def get_or_sum(primary_tags, component_tags_list, soup):
+            val = get_val_by_tag(primary_tags, soup)
+            if val == 0 and component_tags_list:
+                # If primary is missing, try summing components
+                running_sum = 0
+                for tags in component_tags_list:
+                    running_sum += get_val_by_tag(tags, soup)
+                val = running_sum
+            return val
+
+        # 1. Cash (Cash & Deposits or Cash Equivalents)
+        cash = get_val_by_tag(["CashAndDeposits", "CashAndCashEquivalents", "Cash"], soup)
+        
+        # 2. Receivables (Notes & Accounts vs Separated)
+        receivables = get_or_sum(
+            ["NotesAndAccountsReceivableTrade", "NotesAndAccountsReceivable"], 
+            [["NotesReceivableTrade", "NotesReceivable"], ["AccountsReceivableTrade", "AccountsReceivable"]],
+            soup
+        )
+        
+        # 3. Inventory (Total vs Components)
+        inventory = get_or_sum(
+            ["Inventories"],
+            [["MerchandiseAndFinishedGoods", "Merchandise"], ["WorkInProcess"], ["RawMaterialsAndSupplies", "RawMaterials"]],
+            soup
+        )
+        
+        # 4. PPE (Property Plant and Equipment)
+        ppe = get_val_by_tag(["PropertyPlantAndEquipment", "TangibleFixedAssets"], soup)
+        
+        # 5. Intangible & Investments
+        intangible = get_val_by_tag(["IntangibleAssets", "IntangibleFixedAssets"], soup)
+        investments = get_val_by_tag(["InvestmentsAndOtherAssets", "InvestmentSecurities"], soup)
+
+        # 6. Interest Bearing Debt (Summation)
+        debt_tags = [
+            ["ShortTermLoansPayable", "ShortTermLoans"],
+            ["LongTermLoansPayable", "LongTermLoans"],
+            ["CurrentPortionOfBondsPayable", "CurrentPortionOfBonds"],
+            ["BondsPayable", "Bonds"],
+            ["CommercialPapersLiabilities", "CommercialPapers"],
+            ["CurrentPortionOfLongTermLoansPayable", "CurrentPortionOfLongTermLoans"],
+            ["ConvertibleBondsTypeBondsPayable", "ConvertibleBonds"]
+        ]
+        interest_bearing_debt = 0
+        for tags in debt_tags:
+            interest_bearing_debt += get_val_by_tag(tags, soup)
+
+        # 7. Retained Earnings
+        retained_earnings = get_val_by_tag(["RetainedEarnings"], soup)
+        # ------------------------------------------
         
         # Logic to ensure balance and fill gaps
         # 1. Trust Total Assets if available
@@ -354,8 +408,18 @@ def fetch_financial_data(ticker_code, progress_callback=None):
         data["CurrentLiabilities"] = cl
         data["NonCurrentLiabilities"] = ncl
         data["NetAssets"] = na
-        data["TotalAssets"] = total_assets # Informational
+        data["TotalAssets"] = total_assets
         
+        # Add Details to Data
+        data["Cash"] = cash
+        data["Receivables"] = receivables
+        data["Inventory"] = inventory
+        data["PPE"] = ppe
+        data["Intangible"] = intangible
+        data["Investments"] = investments
+        data["InterestDebt"] = interest_bearing_debt
+        data["RetainedEarnings"] = retained_earnings
+
         update_progress(1.0, "完了")
         return data
         
