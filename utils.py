@@ -310,10 +310,10 @@ def fetch_financial_data(ticker_code, progress_callback=None):
         data["Industry"] = industry
         
         # Fetch Components
-        ca = get_val_by_tag(["CurrentAssets", "AssetsCurrent"], soup)
-        nca = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent"], soup)
-        cl = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent"], soup)
-        ncl = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent"], soup)
+        ca = get_val_by_tag(["CurrentAssets", "AssetsCurrent", "CurrentAssetsIFRSSummaryOfBusinessResults"], soup)
+        nca = get_val_by_tag(["NonCurrentAssets", "AssetsNonCurrent", "NonCurrentAssetsIFRSSummaryOfBusinessResults"], soup)
+        cl = get_val_by_tag(["CurrentLiabilities", "LiabilitiesCurrent", "CurrentLiabilitiesIFRSSummaryOfBusinessResults"], soup)
+        ncl = get_val_by_tag(["NonCurrentLiabilities", "LiabilitiesNonCurrent", "NonCurrentLiabilitiesIFRSSummaryOfBusinessResults"], soup)
         na = get_val_by_tag(["NetAssets", "Equity", "TotalNetAssets", "EquityAttributableToOwnersOfParent", "EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], soup)
         
         # Fetch Totals for Validation
