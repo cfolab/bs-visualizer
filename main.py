@@ -52,35 +52,97 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
     def rounded_marker(color):
         return dict(color=color, cornerradius=15) 
 
-    # Assets Column (Left) - Professional Blue Theme
-    fig.add_trace(go.Bar(name='固定資産', x=['資産'], y=[nca], marker=rounded_marker('#0288D1'), text=fmt(nca), textposition='auto', hovertemplate='固定資産: %{y:,.0f}<extra></extra>'))
-    fig.add_trace(go.Bar(name='流動資産', x=['資産'], y=[ca], marker=rounded_marker('#4FC3F7'), text=fmt(ca), textposition='auto', hovertemplate='流動資産: %{y:,.0f}<extra></extra>'))
+    # Traces with Custom Data for Click Detection
+    # Assets
+    fig.add_trace(go.Bar(name='固定資産', x=['資産'], y=[nca], marker=rounded_marker('#0288D1'), 
+                         text=fmt(nca), textposition='auto', customdata=['固定資産'], hovertemplate='固定資産: %{y:,.0f}<extra></extra>'))
+    fig.add_trace(go.Bar(name='流動資産', x=['資産'], y=[ca], marker=rounded_marker('#4FC3F7'), 
+                         text=fmt(ca), textposition='auto', customdata=['流動資産'], hovertemplate='流動資産: %{y:,.0f}<extra></extra>'))
     
-    # Liabilities (Right)
-    fig.add_trace(go.Bar(name='純資産', x=['負債・純資産'], y=[na], marker=rounded_marker('#01579B'), text=fmt(na), textposition='auto', hovertemplate='純資産: %{y:,.0f}<extra></extra>'))
-    fig.add_trace(go.Bar(name='固定負債', x=['負債・純資産'], y=[ncl], marker=rounded_marker('#78909C'), text=fmt(ncl), textposition='auto', hovertemplate='固定負債: %{y:,.0f}<extra></extra>'))
-    fig.add_trace(go.Bar(name='流動負債', x=['負債・純資産'], y=[cl], marker=rounded_marker('#B0BEC5'), text=fmt(cl), textposition='auto', hovertemplate='流動負債: %{y:,.0f}<extra></extra>'))
+    # Liabilities
+    fig.add_trace(go.Bar(name='純資産', x=['負債・純資産'], y=[na], marker=rounded_marker('#01579B'), 
+                         text=fmt(na), textposition='auto', customdata=['純資産'], hovertemplate='純資産: %{y:,.0f}<extra></extra>'))
+    fig.add_trace(go.Bar(name='固定負債', x=['負債・純資産'], y=[ncl], marker=rounded_marker('#78909C'), 
+                         text=fmt(ncl), textposition='auto', customdata=['固定負債'], hovertemplate='固定負債: %{y:,.0f}<extra></extra>'))
+    fig.add_trace(go.Bar(name='流動負債', x=['負債・純資産'], y=[cl], marker=rounded_marker('#B0BEC5'), 
+                         text=fmt(cl), textposition='auto', customdata=['流動負債'], hovertemplate='流動負債: %{y:,.0f}<extra></extra>'))
     
     fig.update_layout(
         barmode='stack',
         showlegend=True,
-        height=400 if not show_metrics else 500, # Slightly shorter if comparison mode
+        height=400 if not show_metrics else 500,
         margin=dict(l=20, r=20, t=30, b=20),
         paper_bgcolor='white', 
         plot_bgcolor='white',
         font=dict(size=14, family="Noto Sans JP", color="#333333"),
         xaxis=dict(tickfont=dict(color="#333333", size=14), linecolor="#e0e0e0"),
         yaxis=dict(tickfont=dict(color="#333333"), title=dict(font=dict(color="#333333")), showgrid=True, gridcolor="#f0f0f0"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#333333"))
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#333333")),
+        clickmode='event+select' # Enable clicking
     )
 
     if show_metrics:
-        # Single Mode: 4:1 Layout with Metrics
         col1, col2 = st.columns([4, 1])
         with col1:
              st.markdown("#### 資産・負債の構成")
-             st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}")
-        
+             # Capture selection
+             selection = st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}", on_select="rerun", selection_mode="points")
+             
+             # Drill Down Logic
+             detail_content = None
+             if selection and selection["selection"]["points"]:
+                 point = selection["selection"]["points"][0]
+                 category = point["customdata"][0] if "customdata" in point else point["legendgroup"]
+                 
+                 if category == "流動資産":
+                     detail_content = {
+                         "title": "流動資産の詳細",
+                         "items": [
+                             ("現金・預金", data.get("Cash", 0)),
+                             ("受取手形・売掛金", data.get("Receivables", 0)),
+                             ("棚卸資産", data.get("Inventory", 0)),
+                             ("その他", ca - (data.get("Cash",0)+data.get("Receivables",0)+data.get("Inventory",0)))
+                         ]
+                     }
+                 elif category == "固定資産":
+                     detail_content = {
+                         "title": "固定資産の詳細",
+                         "items": [
+                             ("有形固定資産", data.get("PPE", 0)),
+                             ("無形固定資産", data.get("Intangible", 0)),
+                             ("投資その他の資産", data.get("Investments", 0)),
+                         ]
+                     }
+                 elif category in ["固定負債", "流動負債"]:
+                     # Show Debt Info
+                     interest_debt = data.get("InterestDebt", 0)
+                     detail_content = {
+                         "title": "負債の詳細情報",
+                         "items": [
+                             ("有利子負債合計", interest_debt),
+                             ("その他の負債", (cl + ncl) - interest_debt)
+                         ]
+                     }
+                 elif category == "純資産":
+                     detail_content = {
+                         "title": "純資産の詳細",
+                         "items": [
+                             ("利益剰余金", data.get("RetainedEarnings", 0)),
+                             ("その他", na - data.get("RetainedEarnings", 0))
+                         ]
+                     }
+
+             if detail_content:
+                 st.markdown(f"""
+                 <div style="background-color:#F5F5F5; padding:15px; border-radius:8px; margin-top:10px; border-left: 5px solid #0288D1; animation: fadeInUp 0.3s ease;">
+                    <h5 style="margin:0 0 10px 0;">🔍 {detail_content['title']}</h5>
+                    <div style="display:flex; justify-content:space-around; flex-wrap:wrap;">
+                        {"".join([f'<div style="text-align:center; min-width:100px; margin:5px;"><div style="font-size:0.8em; color:#666;">{tag}</div><div style="font-weight:bold;">{fmt(val)}</div></div>' for tag, val in detail_content['items']])}
+                    </div>
+                 </div>
+                 """, unsafe_allow_html=True)
+
+
         with col2:
             equity_ratio = (na / total_assets) * 100 if total_assets > 0 else 0
             current_ratio = (ca / cl) * 100 if cl > 0 else 0
@@ -125,7 +187,59 @@ def render_company_analysis(ticker, data, key_suffix="", show_metrics=True):
     else:
         # Comparison Mode: Just Chart
         st.markdown("#### 資産・負債の構成")
-        st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}")
+        selection = st.plotly_chart(fig, use_container_width=True, key=f"chart_{ticker}_{key_suffix}", on_select="rerun", selection_mode="points")
+        
+        if selection and selection["selection"]["points"]:
+             point = selection["selection"]["points"][0]
+             category = point["customdata"][0] if "customdata" in point else point["legendgroup"]
+             
+             detail_content = None
+             if category == "流動資産":
+                 detail_content = {
+                     "title": "流動資産の詳細",
+                     "items": [
+                         ("現金・預金", data.get("Cash", 0)),
+                         ("受取手形・売掛金", data.get("Receivables", 0)),
+                         ("棚卸資産", data.get("Inventory", 0)),
+                         ("その他", ca - (data.get("Cash",0)+data.get("Receivables",0)+data.get("Inventory",0)))
+                     ]
+                 }
+             elif category == "固定資産":
+                 detail_content = {
+                     "title": "固定資産の詳細",
+                     "items": [
+                         ("有形固定資産", data.get("PPE", 0)),
+                         ("無形固定資産", data.get("Intangible", 0)),
+                         ("投資その他の資産", data.get("Investments", 0)),
+                     ]
+                 }
+             elif category in ["固定負債", "流動負債"]:
+                 interest_debt = data.get("InterestDebt", 0)
+                 detail_content = {
+                     "title": "負債の詳細情報",
+                     "items": [
+                         ("有利子負債合計", interest_debt),
+                         ("その他の負債", (cl + ncl) - interest_debt)
+                     ]
+                 }
+             elif category == "純資産":
+                 detail_content = {
+                     "title": "純資産の詳細",
+                     "items": [
+                         ("利益剰余金", data.get("RetainedEarnings", 0)),
+                         ("その他", na - data.get("RetainedEarnings", 0))
+                     ]
+                 }
+
+             if detail_content:
+                 st.markdown(f"""
+                 <div style="background-color:#F5F5F5; padding:10px; border-radius:8px; margin-top:5px; border-left: 4px solid #0288D1; font-size:0.9em;">
+                    <div style="font-weight:bold; margin-bottom:5px;">🔍 {detail_content['title']}</div>
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+                        {"".join([f'<div style="margin-right:10px;"><span style="color:#666;">{tag}:</span> <b>{fmt(val)}</b></div>' for tag, val in detail_content['items']])}
+                    </div>
+                 </div>
+                 """, unsafe_allow_html=True)
 
 # Application Header
 st.title("📊 貸借対照表（B/S）可視化ツール")
@@ -148,21 +262,40 @@ if analyze_btn:
     if not ticker1:
          st.warning("証券コードを入力してください。")
     else:
-        # Progress Bar Container
-        progress_bar = st.progress(0, text="準備中...")
-        
-        def update_ui_progress(percent, text):
-            progress_bar.progress(percent, text=text)
+        import concurrent.futures
 
-        # Fetch Data 1
-        data1 = fetch_financial_data(ticker1, progress_callback=update_ui_progress)
+        # Progress Logic for Parallel Fetch
+        # We can't easily share the single progress bar with granular updates from two threads.
+        # So we'll disable granular progress inside the function for the parallel run 
+        # and just show a global spinner/progress.
+        
+        progress_bar = st.progress(0, text="データ取得を開始します...")
+        
+        def fetch_wrapper(t):
+            return fetch_financial_data(t, progress_callback=None)
+
+        data1 = None
         data2 = None
-        
+
         if compare_mode and ticker2:
-            update_ui_progress(0, f"比較対象({ticker2})を検索中...")
-            data2 = fetch_financial_data(ticker2, progress_callback=update_ui_progress)
+            progress_bar.progress(30, text=f"2社同時検索・解析中... ({ticker1}, {ticker2})")
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                future1 = executor.submit(fetch_wrapper, ticker1)
+                future2 = executor.submit(fetch_wrapper, ticker2)
+                
+                data1 = future1.result()
+                data2 = future2.result()
+            
+            progress_bar.progress(100, text="完了")
         
-        # Clear Progress
+        else:
+            # Single mode: Use granular progress
+            def update_ui_progress(percent, text):
+                progress_bar.progress(percent, text=text)
+            
+            data1 = fetch_financial_data(ticker1, progress_callback=update_ui_progress)
+        
         progress_bar.empty()
         
         # Render
